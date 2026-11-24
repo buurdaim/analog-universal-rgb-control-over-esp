@@ -113,4 +113,6 @@ cd android
 ./gradlew assembleDebug
 ```
 
-Open the app, tap **Set up a new board**, choose the board's network, then your home Wi-Fi. After that it finds the board by itself (mDNS `_rgbremote._tcp`).
+![The app's screens](screens/app-1.1.png)
+
+Open the app and tap **Connect the board**: the phone joins the board's own network and the controls open at once. From there, **Put on home Wi-Fi** moves the board to your Wi-Fi, and the app finds it by itself (mDNS `_rgbremote._tcp`). **Try without a board** shows the screens with nothing connected.

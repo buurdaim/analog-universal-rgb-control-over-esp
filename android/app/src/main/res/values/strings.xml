@@ -65,4 +65,20 @@
     <string name="mode_jump7">7 renk atlama</string>
     <string name="calibrate_hint">Beyaz ve modlar için bir kez ayarla: LED\'ler beyaz olana kadar Mod + / Mod − bas, sonra aşağıdaki düğmeye bas.</string>
     <string name="calibrate">LED\'ler şimdi beyaz</string>
+    <string name="welcome">LED şeridini telefondan yönet</string>
+    <string name="connect_board">Kartı bağla</string>
+    <string name="connect_hint">Kart açık olsun. Telefon, kartın kendi ağına (RGB-Remote) bağlanır; çıkan pencerede onu seç.</string>
+    <string name="on_network">Ağında bulunanlar</string>
+    <string name="demo">Kartsız dene</string>
+    <string name="demo_name">Deneme</string>
+    <string name="tab_color">Renk</string>
+    <string name="tab_anim">Animasyon</string>
+    <string name="tab_modes">Modlar</string>
+    <string name="direct_banner">Doğrudan bağlısın. Kartı ev Wi-Fi\'ne alırsan her yerden çalışır.</string>
+    <string name="direct_do">Ev Wi-Fi\'ne al</string>
+    <string name="modes_wrong">Modlar yanlış mı?</string>
+    <string name="step_modes">Mod</string>
+    <string name="step_speed">Mod hızı</string>
+    <string name="more_ways">Diğer yollar</string>
+    <string name="connected_direct">Doğrudan bağlı</string>
 </resources>

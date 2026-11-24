@@ -65,4 +65,20 @@
     <string name="mode_jump7">7-color jump</string>
     <string name="calibrate_hint">Set up once for white and the modes: press Mode + / Mode − until the LEDs are white, then press the button below.</string>
     <string name="calibrate">The LEDs are white now</string>
+    <string name="welcome">Control your LED strip from your phone</string>
+    <string name="connect_board">Connect the board</string>
+    <string name="connect_hint">Turn the board on. The phone joins the board\'s own network (RGB-Remote); choose it in the window that opens.</string>
+    <string name="on_network">Found on your network</string>
+    <string name="demo">Try without a board</string>
+    <string name="demo_name">Demo</string>
+    <string name="tab_color">Color</string>
+    <string name="tab_anim">Animation</string>
+    <string name="tab_modes">Modes</string>
+    <string name="direct_banner">You\'re connected directly. Put the board on your home Wi-Fi to use it anywhere at home.</string>
+    <string name="direct_do">Put on home Wi-Fi</string>
+    <string name="modes_wrong">Modes wrong?</string>
+    <string name="step_modes">Mode</string>
+    <string name="step_speed">Mode speed</string>
+    <string name="more_ways">Other ways</string>
+    <string name="connected_direct">Connected directly</string>
 </resources>

@@ -12,7 +12,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 enum class Screen { Boards, Setup, Light }
-enum class SetupStep { Start, Joining, Pick, Sent }
+enum class SetupStep { Pick, Sent }
 
 class Vm(app: Application) : AndroidViewModel(app) {
     private val prefs = app.getSharedPreferences("rgb", 0)
@@ -27,7 +27,7 @@ class Vm(app: Application) : AndroidViewModel(app) {
     var info by mutableStateOf<BoardInfo?>(null); private set
     var online by mutableStateOf(false); private set
     var note by mutableStateOf<Int?>(null)
-    var step by mutableStateOf(SetupStep.Start); private set
+    var step by mutableStateOf(SetupStep.Pick); private set
     var networks by mutableStateOf<List<String>>(emptyList()); private set
     /** While a finger is on a control, the board's answer must not move it. */
     var holdBright by mutableStateOf<Int?>(null)
@@ -38,6 +38,9 @@ class Vm(app: Application) : AndroidViewModel(app) {
     private var poll: Job? = null
     private var search: Job? = null
     private var foreground = false
+    var direct by mutableStateOf(false); private set
+    var demo by mutableStateOf(false); private set
+    var joining by mutableStateOf(false); private set
 
     init {
         val name = prefs.getString("name", null)
@@ -48,11 +51,11 @@ class Vm(app: Application) : AndroidViewModel(app) {
     // Boards ------------------------------------------------------------------------------------------------------
     fun findBoards() {
         screen = Screen.Boards
+        demo = false
         poll?.cancel()
         leaveOwn()
         search?.cancel()
         boards = emptyList()
-        if (!finder.onWifi()) note = R.string.no_wifi
         searching = true
         search = viewModelScope.launch {
             val stop = finder.discover { b -> boards = (boards.filter { it.name != b.name } + b).sortedBy { it.name } }
@@ -72,6 +75,8 @@ class Vm(app: Application) : AndroidViewModel(app) {
             prefs.edit().putString("name", b.name).putString("address", b.address).apply()
         }
         board = b
+        demo = false
+        direct = over != null
         api = Api(b.address, over)
         state = null
         info = null
@@ -119,7 +124,23 @@ class Vm(app: Application) : AndroidViewModel(app) {
     // Control -----------------------------------------------------------------------------------------------------
     private var sending: Job? = null
 
+    /** The screens without a board: only the picture changes. */
+    fun openDemo() {
+        search?.cancel()
+        poll?.cancel()
+        searching = false
+        api = null
+        demo = true
+        direct = false
+        board = BoardAt(getApplication<Application>().getString(R.string.demo_name), "")
+        info = Demo.info
+        state = Demo.state
+        online = true
+        screen = Screen.Light
+    }
+
     fun set(vararg args: Pair<String, String>) {
+        if (demo) { state = state?.let { Demo.apply(it, args.toMap()) }; return }
         val a = api ?: return
         viewModelScope.launch {
             val s = a.set(*args)
@@ -130,6 +151,7 @@ class Vm(app: Application) : AndroidViewModel(app) {
     /** Dragging on the ring: only the newest color goes out, one request at a time. */
     private var nextColor: Int? = null
     fun color(i: Int) {
+        if (demo) { set("color" to i.toString()); return }
         nextColor = i
         if (sending?.isActive == true) return
         val a = api ?: return
@@ -144,35 +166,42 @@ class Vm(app: Application) : AndroidViewModel(app) {
     }
 
     // Setup -------------------------------------------------------------------------------------------------------
-    fun startSetup() {
-        poll?.cancel()
-        search?.cancel()
-        searching = false
-        step = SetupStep.Start
-        screen = Screen.Setup
-    }
-
     private fun leaveOwn() {
         own.leave()
         network = null
     }
 
-    /** Joins the board's own Wi-Fi, then either lists networks or goes straight to the light. */
-    fun joinOwn(direct: Boolean) {
-        if (step == SetupStep.Joining) return
-        screen = Screen.Setup
-        step = SetupStep.Joining
+    /** Joins the board's own Wi-Fi and goes straight to the light. */
+    fun connectDirect() {
+        if (joining) return
+        joining = true
+        search?.cancel()
+        searching = false
         viewModelScope.launch {
-            val n = own.join { viewModelScope.launch { if (screen == Screen.Light && network != null) online = false } }
-            if (n == null) { step = SetupStep.Start; note = R.string.setup_fail; return@launch }
-            network = n
-            val a = Api(OWN, n, 15)
-            var s: LightState? = null
-            for (k in 0 until 5) { s = a.state(); if (s != null) break; delay(700) }
-            if (s == null) { leaveOwn(); step = SetupStep.Start; note = R.string.setup_fail; return@launch }
-            ownName = s.name
-            if (direct) { step = SetupStep.Start; open(BoardAt(s.name, OWN), n) } else { step = SetupStep.Pick; scanNetworks() }
+            val found = joinOwn()
+            joining = false
+            if (found != null) open(BoardAt(found.name, OWN), network) else note = R.string.setup_fail
         }
+    }
+
+    private suspend fun joinOwn(): LightState? {
+        val n = own.join { viewModelScope.launch { if (direct) online = false } } ?: return null
+        network = n
+        val a = Api(OWN, n, 15)
+        for (k in 0 until 6) {
+            a.state()?.let { ownName = it.name; return it }
+            delay(700)
+        }
+        leaveOwn()
+        return null
+    }
+
+    /** From a direct connection: choose the home network. */
+    fun moveToHome() {
+        poll?.cancel()
+        step = SetupStep.Pick
+        screen = Screen.Setup
+        scanNetworks()
     }
 
     private var ownName = ""
@@ -194,15 +223,12 @@ class Vm(app: Application) : AndroidViewModel(app) {
             leaveOwn()                       // back to the home Wi-Fi, where the board is going too
             delay(3000)
             val found = finder.find(ownName, 45_000)
-            if (found != null) open(found) else { note = R.string.setup_notfound; step = SetupStep.Start }
+            if (found != null) open(found) else { note = R.string.setup_notfound; findBoards() }
         }
     }
 
     fun back() {
-        when (screen) {
-            Screen.Setup -> { leaveOwn(); step = SetupStep.Start; findBoards() }
-            else -> findBoards()
-        }
+        if (screen == Screen.Setup && network != null) { screen = Screen.Light; startPolling() } else findBoards()
     }
 
     override fun onCleared() = leaveOwn()
